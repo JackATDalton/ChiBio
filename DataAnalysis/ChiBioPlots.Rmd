@@ -1,0 +1,52 @@
+
+```{r}
+# Required libraries
+library(tidyverse)
+```
+
+
+```{r}
+#load data
+df1 = read.csv("2025-03-04_16_15_34_M0_data.csv")
+df2 = read.csv("2025-03-04_16_15_37_M1_data.csv")
+df3 = read.csv("2025-03-04_16_15_39_M2_data.csv")
+df4 = read.csv("2025-03-04_16_15_41_M3_data.csv")
+df5 = read.csv("2025-03-04_16_48_12_M0_data.csv")
+df6 = read.csv("2025-03-04_16_48_15_M1_data.csv")
+df7 = read.csv("2025-03-04_16_48_17_M2_data.csv")
+df8 = read.csv("2025-03-04_16_48_22_M3_data.csv")
+
+# Add a column to each data frame to identify its origin
+df1$source <- "1"
+df2$source <- "2"
+df3$source <- "3"
+df4$source <- "4"
+df5$source <- "5"
+df6$source <- "6"
+df7$source <- "7"
+df8$source <- "8"
+
+df <- rbind(df1, df2, df3, df4, df5, df6, df7, df8)
+
+```
+
+```{r}
+# Plot the raw growth curves 
+ggplot(df, aes(x = exp_time, y = od_measured,color = factor(source) )) +
+  geom_line() +
+  facet_wrap(~ source) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(title = "OD", x = "Time (s)", y = "Absorbance")
+```
+```{r}
+# Plot the raw growth curves 
+ggplot(df, aes(x = exp_time, y = growth_rate, color = factor(source) )) +
+  geom_line() +
+  facet_wrap(~ source) +
+  theme_bw() +
+  ylim(0,10)
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(title = "OD", x = "Time (s)", y = "Growth Rate")
+```
+
