@@ -7,27 +7,34 @@ library(tidyverse)
 
 ```{r}
 #load data
-df1 = read.csv("2025-03-04_16_15_34_M0_data.csv")
-df2 = read.csv("2025-03-04_16_15_37_M1_data.csv")
-df3 = read.csv("2025-03-04_16_15_39_M2_data.csv")
-df4 = read.csv("2025-03-04_16_15_41_M3_data.csv")
-df5 = read.csv("2025-03-04_16_48_12_M0_data.csv")
-df6 = read.csv("2025-03-04_16_48_15_M1_data.csv")
-df7 = read.csv("2025-03-04_16_48_17_M2_data.csv")
-df8 = read.csv("2025-03-04_16_48_22_M3_data.csv")
+dfc = read.csv("2025-03-04_16_15_37_M1_data.csv")
+df1 = read.csv("2025-03-05 16_00_19_M1_data.csv")
+df2 = read.csv("2025-03-05 16_00_21_M2_data.csv")
+df3 = read.csv("2025-03-05 16_00_24_M3_data.csv")
+df4 = read.csv("2025-03-05 15_47_37_M0_data.csv")
+df5 = read.csv("2025-03-05 15_47_39_M1_data.csv")
+df6 = read.csv("2025-03-05 15_47_42_M2_data.csv")
+df7 = read.csv("2025-03-05 15_47_44_M3_data.csv")
+df8 = read.csv("2025-03-05 16_00_17_M0_data.csv")
 
 # Add a column to each data frame to identify its origin
-df1$source <- "1"
-df2$source <- "2"
-df3$source <- "3"
-df4$source <- "4"
-df5$source <- "5"
-df6$source <- "6"
-df7$source <- "7"
-df8$source <- "8"
+dfc$source <- "0"
+df1$source <- "0.0025"
+df2$source <- "0.005"
+df3$source <- "0.01"
+df4$source <- "0.025"
+df5$source <- "0.05"
+df6$source <- "0.1"
+df7$source <- "0.25"
+df8$source <- "0.5"
 
-df <- rbind(df1, df2, df3, df4, df5, df6, df7, df8)
-
+df <- rbind(df1, df2, df3, df4, df5, df6, df7, df8, df9)
+# Create a new column 'UV_threshold' to indicate when LED_UV_int > 1
+df <- df %>%
+  mutate(UV_threshold = ifelse(LED_UV_int > 0.001, 5, 0)) # Replace 5 with your desired arbitrary height
+dfc <- dfc %>%
+  mutate(UV_threshold = 0)
+df <- rbind(dfc,df)
 ```
 
 ```{r}
@@ -43,10 +50,74 @@ ggplot(df, aes(x = exp_time, y = od_measured,color = factor(source) )) +
 # Plot the raw growth curves 
 ggplot(df, aes(x = exp_time, y = growth_rate, color = factor(source) )) +
   geom_line() +
+  geom_line(aes(y = UV_threshold), linetype = "dashed", color = "blue") +  # Add LED_UV_int as a dashed line
   facet_wrap(~ source) +
   theme_bw() +
-  ylim(0,10)
+  ylim(-2,10)+
   theme(axis.text.x = element_text(angle = 45, hjust=1))+
   labs(title = "OD", x = "Time (s)", y = "Growth Rate")
+```
+```{r}
+# Plot the raw growth curves 
+ggplot(df, aes(x = exp_time, y = growth_rate, color = factor(source) )) +
+  geom_line() +
+  geom_line(aes(y = UV_threshold), linetype = "dashed", color = "blue") +  # Add LED_UV_int as a dashed line
+  #facet_wrap(~ source) +
+  theme_bw() +
+  #xlim(22000,90000)
+  ylim(-2,10)+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(title = "OD", x = "Time (s)", y = "Growth Rate")
+```
+```{r}
+# Calculate the minimum growth rate for each sample
+min_growth_rates <- df %>%
+  group_by(source) %>%
+  filter(LED_UV_int > 0) %>%
+  summarize(min_growth = min(growth_rate), .groups = "drop")
+
+recovered_growth_rates <- df %>%
+  group_by(source) %>%
+  filter(exp_time > 55000) %>%
+  summarize(recovered_growth = max(growth_rate), .groups = "drop")
+  
+# Join the minimum growth rates back to the original data frame
+df_with_min <- df %>%
+  left_join(min_growth_rates, by = "source")
+
+df_with_recovery <- df_with_min %>%
+  left_join(recovered_growth_rates, by = "source")
+
+# Filter for the target time
+df_at_target_time <- df_with_recovery %>%
+  group_by(source) %>%
+  filter(LED_UV_int > 0) %>%
+  slice(1)
+  
+
+# Calculate the difference between growth rate and minimum growth rate
+df_diff <- df_at_target_time %>%
+  mutate(growth_diff = growth_rate - min_growth, recovery = 100*(recovered_growth/growth_rate))
+
+head(df_diff)
+```
+```{r}
+# Plot the raw growth curves 
+ggplot(df_diff, aes(x = source, y = growth_diff)) +
+  geom_point() +
+  #facet_wrap(~ source) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(title = "Growth Delta", x = "UV Intensity", y = "Change in Growth Rate")
+```
+```{r}
+# Plot the raw growth curves 
+ggplot(df_diff, aes(x = source, y = recovery)) +
+  geom_point() +
+  #facet_wrap(~ source) +
+  theme_bw() +
+  ylim(0,130)+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(title = "Growth Recovery", x = "UV Intensity", y = "Growth Rate Recovery (%)")
 ```
 
